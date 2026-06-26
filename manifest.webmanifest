@@ -1,0 +1,17 @@
+{
+  "name": "网页生词学习系统",
+  "short_name": "生词学习",
+  "description": "一个本地优先的个人英语网页生词学习 App。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f7f5",
+  "theme_color": "#f7f7f5",
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

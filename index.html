@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f7f5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="生词学习" />
+    <title>生词学习</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./app-icon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="workspace">
+      <section class="phone" aria-label="英语学习 App 原型">
+        <header class="status-bar">
+          <span>9:41</span>
+          <span class="status-icons">5G 100%</span>
+        </header>
+
+        <div id="screen" class="screen" aria-live="polite"></div>
+
+        <nav class="bottom-nav" aria-label="底部导航">
+          <button class="nav-item active" data-route="today">
+            <span class="nav-icon">□</span>
+            <span>今日</span>
+          </button>
+          <button class="nav-item" data-route="vocabulary">
+            <span class="nav-icon">▤</span>
+            <span>词汇</span>
+          </button>
+          <button class="nav-item" data-route="speaking">
+            <span class="nav-icon">◉</span>
+            <span>口语</span>
+          </button>
+          <button class="nav-item" data-route="checkin">
+            <span class="nav-icon">◌</span>
+            <span>打卡</span>
+          </button>
+          <button class="nav-item" data-route="profile">
+            <span class="nav-icon">◇</span>
+            <span>我的</span>
+          </button>
+        </nav>
+      </section>
+
+      <aside class="side-panel" aria-label="原型说明">
+        <p class="eyebrow">Interactive Prototype</p>
+        <h1>网页生词学习系统</h1>
+        <p>
+          现在已经升级成本地可用版本：生词、复习、打卡、口语记录会保存在浏览器本机。
+          Chrome 插件作为后续模块保留同步入口。
+        </p>
+        <div class="notes">
+          <div class="side-actions">
+            <button id="install-app" class="primary-button" hidden>安装应用</button>
+            <button id="export-data" class="secondary-button">导出数据</button>
+            <button id="demo-reset" class="ghost-button">重置数据</button>
+          </div>
+          <input id="import-data" type="file" accept="application/json" hidden />
+          <p>可检查：真实新增/编辑/删除、IndexedDB 持久保存、导入导出、复习排期、语音发音、浏览器录音、打卡和 PWA 安装。</p>
+        </div>
+      </aside>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
