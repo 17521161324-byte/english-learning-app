@@ -87,6 +87,7 @@ const state = {
   ready: false,
   route: "today",
   tab: "全部",
+  speakingMode: "场景",
   query: "",
   selectedWordId: "",
   formMode: "",
@@ -547,20 +548,31 @@ function escapeAttr(value) {
 function renderSpeaking() {
   const words = state.words.slice(0, 3).map((item) => item.word);
   const sessions = state.speakingSessions.slice(0, 3);
+  const mode = state.speakingMode;
+  const content = speakingModeContent(mode, words);
   return `
     ${pageHead("口语练习", `已保存 ${state.speakingSessions.length} 次录音`)}
     <section class="tabs">
-      <button class="tab active">场景</button>
-      <button class="tab">跟读</button>
-      <button class="tab">自由表达</button>
+      ${["场景", "跟读", "自由表达"].map((item) => `<button class="tab ${mode === item ? "active" : ""}" data-speaking-mode="${item}">${item}</button>`).join("")}
     </section>
 
     <section class="section soft-surface review-card">
-      <h3 class="section-title">今日主题</h3>
-      <span class="row-title">用今天的网页生词做一次工作汇报</span>
-      <p class="row-copy">请用 30 秒描述你今天读到的一篇英文文章。</p>
+      <h3 class="section-title">${content.label}</h3>
+      <span class="row-title">${content.title}</span>
+      <p class="row-copy">${content.prompt}</p>
       <div class="inline-row">${words.map((word) => `<span class="tag">${word}</span>`).join("")}</div>
     </section>
+
+    ${
+      content.examples.length
+        ? `<section class="section">
+            <h3 class="section-title">示范句</h3>
+            <div class="list">
+              ${content.examples.map((example) => `<button class="list-row" data-speak-text="${escapeAttr(example)}"><span><span class="row-title">${example}</span><span class="row-copy">点击播放示范发音</span></span><span class="status-pill blue">播放</span></button>`).join("")}
+            </div>
+          </section>`
+        : ""
+    }
 
     <section class="section recorder surface ${state.recording ? "recording" : ""}">
       <button class="mic" data-record>${state.recording ? "■" : "●"}</button>
@@ -571,6 +583,7 @@ function renderSpeaking() {
           .join("")}
       </div>
       <button class="primary-button" data-record>${state.recording ? "停止录音" : "开始录音"}</button>
+      <p class="row-copy">${content.hint}</p>
     </section>
 
     <section class="section">
@@ -593,6 +606,37 @@ function renderSpeaking() {
       </div>
     </section>
   `;
+}
+
+function speakingModeContent(mode, words) {
+  if (mode === "跟读") {
+    return {
+      label: "跟读练习",
+      title: "先听示范，再录自己的版本",
+      prompt: "跟读时重点模仿停顿、重音和句尾语调。",
+      hint: "建议先播放示范句，再点击开始录音。",
+      examples: [
+        `The latest ${words[0] || "acquisition"} changed the company's strategy.`,
+        `We need to understand the technical ${words[1] || "constraint"} first.`,
+      ],
+    };
+  }
+  if (mode === "自由表达") {
+    return {
+      label: "自由表达",
+      title: "用今天的生词做 30 秒自由表达",
+      prompt: "请围绕你今天读到的一篇英文文章，说出观点、原因和一个例子。",
+      hint: "录音会保存到历史中，方便你之后回听。",
+      examples: [],
+    };
+  }
+  return {
+    label: "今日主题",
+    title: "用今天的网页生词做一次工作汇报",
+    prompt: "请用 30 秒描述你今天读到的一篇英文文章。",
+    hint: "说不完整也没关系，目标是把生词用出来。",
+    examples: [],
+  };
 }
 
 function renderCheckin() {
@@ -850,6 +894,13 @@ function bindViewEvents() {
 
   screen.querySelectorAll("[data-record]").forEach((button) => button.addEventListener("click", toggleRecording));
 
+  screen.querySelectorAll("[data-speaking-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.speakingMode = button.dataset.speakingMode;
+      render();
+    });
+  });
+
   screen.querySelectorAll("[data-toggle]").forEach((button) => {
     button.addEventListener("click", async () => {
       const key = button.dataset.toggle;
@@ -886,6 +937,7 @@ function bindViewEvents() {
   });
 
   screen.querySelectorAll("[data-speak]").forEach((button) => button.addEventListener("click", () => speakWord(selectedWord()?.word)));
+  screen.querySelectorAll("[data-speak-text]").forEach((button) => button.addEventListener("click", () => speakWord(button.dataset.speakText)));
   screen.querySelectorAll("[data-export]").forEach((button) => button.addEventListener("click", exportData));
   screen.querySelectorAll("[data-import-trigger]").forEach((button) => button.addEventListener("click", () => importInput.click()));
   screen.querySelector("[data-check-update]")?.addEventListener("click", () => checkForUpdate(true));
@@ -941,7 +993,7 @@ async function toggleRecording() {
     return;
   }
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-    showToast("当前浏览器不支持录音");
+    showToast("当前 WebView 不支持网页录音");
     return;
   }
   try {
@@ -959,7 +1011,7 @@ async function toggleRecording() {
       state.seconds = 30;
       state.speakingSessions.unshift({
         id: uid("session"),
-        title: "网页生词口语练习",
+        title: `${state.speakingMode} · 网页生词口语练习`,
         createdAt: new Date().toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
         duration: Math.max(1, duration),
         targetWords: state.words.slice(0, 3).map((word) => word.word),
@@ -979,8 +1031,9 @@ async function toggleRecording() {
     }, 1000);
     showToast("开始录音");
     render();
-  } catch {
-    showToast("录音权限未开启");
+  } catch (error) {
+    console.error("Recording failed", error);
+    showToast("录音启动失败，请检查系统麦克风权限");
   }
 }
 
