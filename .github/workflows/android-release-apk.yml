@@ -1,8 +1,5 @@
 name: Android Release APK
 
-env:
-  PUBLIC_RELEASE_REPO: 17521161324-byte/english-learning-app-release
-
 on:
   push:
     tags:
@@ -109,43 +106,18 @@ jobs:
           {
             "versionCode": ${{ steps.version.outputs.version_code }},
             "versionName": "${{ steps.version.outputs.version_name }}",
-            "apkUrl": "https://github.com/${PUBLIC_RELEASE_REPO}/releases/download/v${{ steps.version.outputs.version_name }}/english-learning-app-${{ steps.version.outputs.version_name }}.apk",
-            "releaseUrl": "https://github.com/${PUBLIC_RELEASE_REPO}/releases/tag/v${{ steps.version.outputs.version_name }}",
+            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version_name }}/english-learning-app-${{ steps.version.outputs.version_name }}.apk",
+            "releaseUrl": "https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version_name }}",
             "changelog": "${{ steps.version.outputs.changelog }}"
           }
           EOF
 
-      - name: Validate public release token
-        env:
-          PUBLIC_RELEASE_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
-        run: |
-          if [ -z "$PUBLIC_RELEASE_TOKEN" ]; then
-            echo "Missing PUBLIC_RELEASE_TOKEN secret. Add a token that can write to ${PUBLIC_RELEASE_REPO}."
-            exit 1
-          fi
-
-      - name: Create public GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          repository: ${{ env.PUBLIC_RELEASE_REPO }}
           tag_name: v${{ steps.version.outputs.version_name }}
           name: 生词学习 ${{ steps.version.outputs.version_name }}
           body: ${{ steps.version.outputs.changelog }}
-          token: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           files: |
             release/english-learning-app-${{ steps.version.outputs.version_name }}.apk
             release/latest.json
-
-      - name: Publish latest.json to public repo main
-        env:
-          PUBLIC_RELEASE_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
-        run: |
-          rm -rf public-release-repo
-          git clone "https://x-access-token:${PUBLIC_RELEASE_TOKEN}@github.com/${PUBLIC_RELEASE_REPO}.git" public-release-repo
-          cd public-release-repo
-          cp ../release/latest.json latest.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add latest.json
-          git commit -m "Update latest release metadata" || exit 0
-          git push
