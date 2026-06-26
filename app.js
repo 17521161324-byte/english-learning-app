@@ -3,11 +3,12 @@ const DB_VERSION = 1;
 const STATE_KEY = "app-state";
 const APP_VERSION_CODE = 1;
 const APP_VERSION_NAME = "0.1.0";
+const PUBLIC_RELEASE_REPO = "17521161324-byte/english-learning-app-release";
 const UPDATE_FEED_URLS = [
-  "https://github.com/17521161324-byte/english-learning-app/releases/latest/download/latest.json",
-  "https://raw.githubusercontent.com/17521161324-byte/english-learning-app/main/update/latest.json",
+  `https://github.com/${PUBLIC_RELEASE_REPO}/releases/latest/download/latest.json`,
+  `https://raw.githubusercontent.com/${PUBLIC_RELEASE_REPO}/main/latest.json`,
 ];
-const RELEASES_URL = "https://github.com/17521161324-byte/english-learning-app/releases/latest";
+const RELEASES_URL = `https://github.com/${PUBLIC_RELEASE_REPO}/releases/latest`;
 
 const todayKey = new Date().toISOString().slice(0, 10);
 const todayText = new Intl.DateTimeFormat("zh-CN", {
