@@ -60,7 +60,7 @@ npm run android:apk
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-打包 APK 需要本机安装 Java JDK 和 Android Studio / Android SDK。当前 App 采用本地优先数据策略，不需要后端数据库即可离线使用。
+打包 APK 需要本机安装 Java JDK 21 和 Android Studio / Android SDK。当前 App 采用本地优先数据策略，不需要后端数据库即可离线使用。
 
 如果本机暂时没有 Android 构建环境，也可以用 GitHub Actions 云端构建。推送到 GitHub 后，打开仓库的 `Actions` 页面，运行 `Android Debug APK` 工作流，完成后在 artifact 中下载 `english-learning-debug-apk`。
 

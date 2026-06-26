@@ -23,7 +23,7 @@ android/app/build/outputs/apk/debug/app-debug.apk
 ## Required Local Tools
 
 - Node.js and npm
-- Java JDK
+- Java JDK 21
 - Android Studio / Android SDK
 
 当前仓库已经具备 Node/npm。打包 APK 前还需要安装 Java JDK 和 Android Studio。
