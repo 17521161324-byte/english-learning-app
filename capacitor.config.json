@@ -1,0 +1,9 @@
+{
+  "appId": "com.personal.englishlearning",
+  "appName": "生词学习",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
+

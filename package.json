@@ -1,0 +1,24 @@
+{
+  "name": "english-learning-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "本地优先的个人英语网页生词学习 App。",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "build": "mkdir -p dist && cp index.html styles.css app.js manifest.webmanifest service-worker.js app-icon.svg dist/",
+    "sync": "npm run build && cap sync android",
+    "open:android": "cap open android",
+    "android:apk": "npm run build && cap copy android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/filesystem": "^7.1.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4"
+  }
+}
+
