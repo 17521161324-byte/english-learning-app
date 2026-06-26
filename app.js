@@ -1,6 +1,13 @@
 const DB_NAME = "web-vocab-learning";
 const DB_VERSION = 1;
 const STATE_KEY = "app-state";
+const APP_VERSION_CODE = 1;
+const APP_VERSION_NAME = "0.1.0";
+const UPDATE_FEED_URLS = [
+  "https://github.com/17521161324-byte/english-learning-app/releases/latest/download/latest.json",
+  "https://raw.githubusercontent.com/17521161324-byte/english-learning-app/main/update/latest.json",
+];
+const RELEASES_URL = "https://github.com/17521161324-byte/english-learning-app/releases/latest";
 
 const todayKey = new Date().toISOString().slice(0, 10);
 const todayText = new Intl.DateTimeFormat("zh-CN", {
@@ -94,6 +101,12 @@ const state = {
   mediaRecorder: null,
   recordingChunks: [],
   deferredPrompt: null,
+  update: {
+    checking: false,
+    info: null,
+    error: "",
+    lastCheckedAt: "",
+  },
 };
 
 let db;
@@ -190,6 +203,7 @@ async function init() {
   state.ready = true;
   await saveState();
   render();
+  checkForUpdate(false);
 }
 
 function selectedWord() {
@@ -663,16 +677,49 @@ function renderProfile() {
         <button class="list-row" data-go="settings"><span><span class="row-title">Chrome 插件同步</span><span class="row-copy">后续接入 · 当前本地保存</span></span><span class="status-pill amber">待开发</span></button>
       </div>
     </section>
+
+    <section class="section">
+      <h3 class="section-title">应用</h3>
+      <div class="list">
+        <button class="list-row" data-go="settings"><span><span class="row-title">版本与更新</span><span class="row-copy">当前版本 ${APP_VERSION_NAME} (${APP_VERSION_CODE})</span></span><span class="status-pill ${state.update.info?.hasUpdate ? "amber" : "green"}">${state.update.info?.hasUpdate ? "有更新" : "正常"}</span></button>
+      </div>
+    </section>
   `;
 }
 
 function renderSettings() {
+  const update = state.update;
+  const updateCopy = update.checking
+    ? "正在检查 GitHub Releases..."
+    : update.error
+      ? update.error
+      : update.info?.hasUpdate
+        ? `发现 ${update.info.versionName} (${update.info.versionCode})`
+        : update.lastCheckedAt
+          ? `已是最新 · ${update.lastCheckedAt}`
+          : "检查 GitHub Releases 中的 latest.json";
+
   return `
     <header class="page-head">
       <button class="ghost-button compact" data-go="profile">返回</button>
       <h2 class="page-title">设置与同步</h2>
       <p class="subtle">本地数据已自动保存，插件同步后续接入。</p>
     </header>
+
+    <section class="section">
+      <h3 class="section-title">版本与更新</h3>
+      <div class="list">
+        <button class="list-row" data-check-update>
+          <span><span class="row-title">检查更新</span><span class="row-copy">当前版本 ${APP_VERSION_NAME} (${APP_VERSION_CODE}) · ${updateCopy}</span></span>
+          <span class="status-pill ${update.info?.hasUpdate ? "amber" : "blue"}">${update.checking ? "检查中" : "检查"}</span>
+        </button>
+        ${
+          update.info?.hasUpdate
+            ? `<button class="list-row" data-open-update><span><span class="row-title">下载新版 APK</span><span class="row-copy">${update.info.changelog || "打开 GitHub Release 下载并安装"}</span></span><span class="status-pill green">更新</span></button>`
+            : `<button class="list-row" data-open-releases><span><span class="row-title">打开发布页</span><span class="row-copy">查看历史版本和 APK 下载</span></span><span class="status-pill">GitHub</span></button>`
+        }
+      </div>
+    </section>
 
     <section class="section">
       <h3 class="section-title">Chrome 插件</h3>
@@ -841,6 +888,9 @@ function bindViewEvents() {
   screen.querySelectorAll("[data-speak]").forEach((button) => button.addEventListener("click", () => speakWord(selectedWord()?.word)));
   screen.querySelectorAll("[data-export]").forEach((button) => button.addEventListener("click", exportData));
   screen.querySelectorAll("[data-import-trigger]").forEach((button) => button.addEventListener("click", () => importInput.click()));
+  screen.querySelector("[data-check-update]")?.addEventListener("click", () => checkForUpdate(true));
+  screen.querySelector("[data-open-update]")?.addEventListener("click", () => openUpdateDownload());
+  screen.querySelector("[data-open-releases]")?.addEventListener("click", () => openExternal(RELEASES_URL));
 }
 
 function nextReviewDate(status) {
@@ -955,6 +1005,61 @@ function exportData() {
   link.click();
   URL.revokeObjectURL(url);
   showToast("备份已导出");
+}
+
+async function checkForUpdate(showResult) {
+  state.update.checking = true;
+  state.update.error = "";
+  render();
+  try {
+    const latest = await fetchLatestUpdateInfo();
+    const versionCode = Number(latest.versionCode || 0);
+    state.update.info = {
+      ...latest,
+      versionCode,
+      hasUpdate: versionCode > APP_VERSION_CODE,
+    };
+    state.update.lastCheckedAt = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    if (showResult) showToast(state.update.info.hasUpdate ? `发现新版本 ${latest.versionName}` : "当前已是最新版本");
+  } catch (error) {
+    state.update.error = "检查失败，请稍后再试";
+    if (showResult) showToast(state.update.error);
+  } finally {
+    state.update.checking = false;
+    render();
+  }
+}
+
+function openUpdateDownload() {
+  const info = state.update.info;
+  if (!info?.apkUrl) {
+    openExternal(RELEASES_URL);
+    return;
+  }
+  openExternal(info.apkUrl);
+}
+
+function openExternal(url) {
+  const browser = window.Capacitor?.Plugins?.Browser;
+  if (browser?.open) {
+    browser.open({ url });
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+async function fetchLatestUpdateInfo() {
+  let lastError;
+  for (const url of UPDATE_FEED_URLS) {
+    try {
+      const response = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("更新信息暂不可用");
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("更新信息暂不可用");
 }
 
 async function importData(file) {

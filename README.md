@@ -64,6 +64,12 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 如果本机暂时没有 Android 构建环境，也可以用 GitHub Actions 云端构建。推送到 GitHub 后，打开仓库的 `Actions` 页面，运行 `Android Debug APK` 工作流，完成后在 artifact 中下载 `english-learning-debug-apk`。
 
+## 应用内更新
+
+App 内已经预留「版本与更新」入口，会检查 GitHub Release 中的 `latest.json`。发现更高 `versionCode` 后，用户可以在 App 内点击下载新版 APK。
+
+长期迭代请使用正式签名 APK，而不是 debug APK。Android 要求每次覆盖安装更新都使用同一个签名证书，具体见 [Release Signing And In-App Updates](docs/release-signing-and-updates.md)。
+
 ## 数据说明
 
 学习数据默认保存在当前浏览器的 IndexedDB 中，不会上传到服务器。可以在「我的」或「设置与同步」里导出 JSON 备份，也可以导入之前的备份恢复数据。

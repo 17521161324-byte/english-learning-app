@@ -52,6 +52,20 @@ App 启动
 
 Android 普通应用不能静默安装更新，用户仍需确认安装。
 
+当前 App 已加入「版本与更新」入口，会优先读取：
+
+```text
+https://github.com/17521161324-byte/english-learning-app/releases/latest/download/latest.json
+```
+
+如果暂无正式 Release，会回退读取仓库内的：
+
+```text
+update/latest.json
+```
+
+正式更新能力依赖同一个 release keystore。不要用不同签名的 APK 互相覆盖安装。
+
 ## Android Permissions
 
 - `INTERNET`: 检查更新、未来同步、在线词典或 AI 能力。

@@ -1,0 +1,123 @@
+name: Android Release APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version name, for example 0.1.1"
+        required: true
+        default: "0.1.0"
+      version_code:
+        description: "Android versionCode, must increase every release"
+        required: true
+        default: "1"
+      changelog:
+        description: "Release changelog"
+        required: true
+        default: "个人自用版本更新。"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION_NAME="${{ github.event.inputs.version_name }}"
+            VERSION_CODE="${{ github.event.inputs.version_code }}"
+            CHANGELOG="${{ github.event.inputs.changelog }}"
+          else
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+            VERSION_CODE="${GITHUB_RUN_NUMBER}"
+            CHANGELOG="发布 ${GITHUB_REF_NAME}"
+          fi
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "changelog=$CHANGELOG" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Patch app version
+        env:
+          APP_VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          APP_VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        run: npm run set-version
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Missing ANDROID_KEYSTORE_BASE64 secret. Add release signing secrets before building release APK."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+
+      - name: Build signed release APK
+        env:
+          APP_VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          APP_VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          ANDROID_KEYSTORE_PATH: release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/app-release.apk release/english-learning-app-${{ steps.version.outputs.version_name }}.apk
+          cat > release/latest.json <<EOF
+          {
+            "versionCode": ${{ steps.version.outputs.version_code }},
+            "versionName": "${{ steps.version.outputs.version_name }}",
+            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version_name }}/english-learning-app-${{ steps.version.outputs.version_name }}.apk",
+            "releaseUrl": "https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version_name }}",
+            "changelog": "${{ steps.version.outputs.changelog }}"
+          }
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version_name }}
+          name: 生词学习 ${{ steps.version.outputs.version_name }}
+          body: ${{ steps.version.outputs.changelog }}
+          files: |
+            release/english-learning-app-${{ steps.version.outputs.version_name }}.apk
+            release/latest.json
