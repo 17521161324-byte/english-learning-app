@@ -2,6 +2,10 @@
 
 一个本地优先的个人英语学习 PWA。目标是把浏览英文网站时遇到的生词沉淀到自己的生词库里，并在 App 内完成复习、口语练习和打卡。
 
+## 原生 Android 开发
+
+新的 Kotlin + Jetpack Compose 客户端位于 [`native-android`](native-android/README.md)，当前版本为 `v0.2.0-alpha`。现有 Web/Capacitor 代码保留为需求和视觉参考，不再作为新功能主线。
+
 ## 当前能力
 
 - 中文界面，Notion 式清爽工具感
@@ -76,7 +80,6 @@ App 内已经预留「版本与更新」入口，会检查 GitHub Release 中的
 
 ## 后续路线
 
-- Chrome 插件：划词释义、收藏单词、保存原句和来源链接
-- 云同步：可选接入 Supabase 或其他个人后端
-- 手机封装：可选用 Capacitor 打包成 iOS / Android App
-- 复习算法：从当前简洁模式升级为更完整的间隔重复
+项目后续将迁移到 Kotlin + Jetpack Compose 原生 Android 客户端，并按可安装、可验证的版本逐步加入拼词、自动计划、统计、关联词、短语、演讲和 Chrome 插件同步。
+
+详细范围、技术路线和版本验收标准见 [产品功能与版本迭代计划](docs/product-version-roadmap.md)。

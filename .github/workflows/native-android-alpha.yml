@@ -1,0 +1,49 @@
+name: Native Android Alpha
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "native-android/**"
+      - ".github/workflows/native-android-alpha.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-alpha:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build Alpha APK
+        working-directory: native-android
+        run: |
+          chmod +x gradlew
+          ./gradlew testDevDebugUnitTest assembleDevDebug --stacktrace
+
+      - name: Upload Alpha APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: english-learning-native-alpha
+          path: native-android/app/build/outputs/apk/dev/debug/app-dev-debug.apk
+          if-no-files-found: error

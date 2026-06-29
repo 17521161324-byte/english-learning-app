@@ -6,6 +6,10 @@ android/.gradle/
 android/app/build/
 android/build/
 android/local.properties
+native-android/.gradle/
+native-android/local.properties
+native-android/**/build/
+native-android/signing.properties
 .env
 .env.*
 *.log
