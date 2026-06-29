@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -246,7 +245,12 @@ private fun TodayScreen(
 
         SectionTitle("快速开始")
         SurfacePanel {
-            ActionRow(Icons.Outlined.MenuBook, "我的生词库", "${state.words.size} 个单词", onOpenWords)
+            ActionRow(
+                Icons.Outlined.MenuBook,
+                "我的生词库",
+                "${state.words.size} 个单词",
+                onClick = onOpenWords,
+            )
             HorizontalDivider(color = Line)
             ActionRow(Icons.Outlined.MicNone, "口语练习", "暂无练习记录", onClick = onOpenSpeaking)
         }
