@@ -10,6 +10,7 @@ import com.personal.englishlearning.data.StudyEventEntity
 import com.personal.englishlearning.data.UpdateInfo
 import com.personal.englishlearning.data.WordEntity
 import com.personal.englishlearning.domain.summarizeStudy
+import com.personal.englishlearning.domain.buildTodayPlan
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -30,6 +31,7 @@ data class MainUiState(
     val transientMessage: String? = null,
 ) {
     val summary get() = summarizeStudy(events)
+    val todayPlan get() = buildTodayPlan(events, settings, words.map { it.id }.toSet())
 }
 
 class MainViewModel(private val container: AppContainer) : ViewModel() {
@@ -74,9 +76,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    fun updateGoals(newWords: Int, reviewWords: Int, minutes: Int) {
+    fun updateGoals(newWords: Int, reviewWords: Int, speakingSessions: Int, minutes: Int) {
         viewModelScope.launch {
-            container.settings.updateGoals(newWords, reviewWords, minutes)
+            container.settings.updateGoals(newWords, reviewWords, speakingSessions, minutes)
             transientMessage.value = "学习计划已保存"
         }
     }

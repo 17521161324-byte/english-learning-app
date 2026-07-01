@@ -80,6 +80,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.personal.englishlearning.data.WordEntity
+import com.personal.englishlearning.domain.PlanTaskProgress
+import com.personal.englishlearning.domain.PlanTaskStatus
 import com.personal.englishlearning.ui.theme.Faint
 import com.personal.englishlearning.ui.theme.Green
 import com.personal.englishlearning.ui.theme.Ink
@@ -171,6 +173,7 @@ fun EnglishLearningApp(viewModel: MainViewModel) {
                     onAddWord = { showAddWord = true },
                     onOpenWords = { navController.navigate(AppDestination.Words.route) },
                     onOpenSpeaking = { navController.navigate(AppDestination.Speaking.route) },
+                    onOpenStats = { navController.navigate(AppDestination.Stats.route) },
                 )
             }
             composable(AppDestination.Words.route) {
@@ -210,49 +213,85 @@ private fun TodayScreen(
     onAddWord: () -> Unit,
     onOpenWords: () -> Unit,
     onOpenSpeaking: () -> Unit,
+    onOpenStats: () -> Unit,
 ) {
+    val plan = state.todayPlan
     val dateText = remember {
         SimpleDateFormat("M 月 d 日 EEEE", Locale.SIMPLIFIED_CHINESE).format(Date())
     }
     PageColumn {
-        PageHeader("今日", "$dateText · 原生 Alpha")
+        PageHeader("今日", dateText)
         StatsPanel(
             listOf(
-                StatValue("${state.words.size} / ${state.settings.dailyNewWords}", "今日生词"),
-                StatValue("0 / ${state.settings.dailyReviewWords}", "待复习"),
-                StatValue("0 / ${state.settings.dailyMinutes}", "学习分钟"),
+                StatValue("${plan.completionPercent}%", "完成率"),
+                StatValue("${plan.minutes.current}", "学习分钟"),
+                StatValue("${plan.newWords.current}", "今日新词"),
+                StatValue("${plan.speaking.current}", "口语次数"),
             ),
         )
 
         SectionTitle("今日计划")
+        SurfacePanel(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
+            TodayPlanRow(
+                title = "学习新词",
+                subtitle = "添加并整理今天要学习的生词",
+                progress = plan.newWords,
+                unit = "个",
+                onClick = if (state.words.isEmpty()) onAddWord else onOpenWords,
+            )
+            HorizontalDivider(color = Line)
+            TodayPlanRow(
+                title = "复习到期内容",
+                subtitle = "从生词库进入复习内容",
+                progress = plan.reviews,
+                unit = "个",
+                onClick = onOpenWords,
+            )
+            HorizontalDivider(color = Line)
+            TodayPlanRow(
+                title = "口语练习",
+                subtitle = "场景、跟读或自由表达",
+                progress = plan.speaking,
+                unit = "次",
+                onClick = onOpenSpeaking,
+            )
+            HorizontalDivider(color = Line)
+            TodayPlanRow(
+                title = "完成学习时长",
+                subtitle = "由有效学习记录自动累计",
+                progress = plan.minutes,
+                unit = "分钟",
+                onClick = onOpenStats,
+            )
+        }
+
+        SectionTitle("最近生词")
         if (state.words.isEmpty()) {
             EmptyPanel(
                 icon = Icons.Outlined.AutoStories,
                 title = "从第一个生词开始",
-                copy = "添加内容后，学习任务会出现在这里。",
+                copy = "添加后，今日新词进度会自动更新。",
                 action = "添加生词",
                 onAction = onAddWord,
             )
         } else {
-            SurfacePanel {
-                PlanRow("学习新词", "${state.words.size} / ${state.settings.dailyNewWords}", false)
-                HorizontalDivider(color = Line)
-                PlanRow("复习到期内容", "0 / ${state.settings.dailyReviewWords}", false)
-                HorizontalDivider(color = Line)
-                PlanRow("完成学习时长", "0 / ${state.settings.dailyMinutes} 分钟", false)
+            SurfacePanel(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) {
+                state.words.take(3).forEachIndexed { index, word ->
+                    ActionRow(
+                        icon = Icons.Outlined.MenuBook,
+                        title = word.term,
+                        subtitle = word.meaning,
+                        onClick = onOpenWords,
+                    )
+                    if (index != state.words.take(3).lastIndex) HorizontalDivider(color = Line)
+                }
+                if (state.words.size > 3) {
+                    HorizontalDivider(color = Line)
+                    TextButton(onClick = onOpenWords, modifier = Modifier.fillMaxWidth()) {
+                        Text("查看全部 ${state.words.size} 个生词")
+                    }
+                }
             }
-        }
-
-        SectionTitle("快速开始")
-        SurfacePanel {
-            ActionRow(
-                Icons.Outlined.MenuBook,
-                "我的生词库",
-                "${state.words.size} 个单词",
-                onClick = onOpenWords,
-            )
-            HorizontalDivider(color = Line)
-            ActionRow(Icons.Outlined.MicNone, "口语练习", "暂无练习记录", onClick = onOpenSpeaking)
         }
     }
 }
@@ -376,13 +415,14 @@ private fun StatsScreen(state: MainUiState) {
 @Composable
 private fun ProfileScreen(
     state: MainUiState,
-    onSaveGoals: (Int, Int, Int) -> Unit,
+    onSaveGoals: (Int, Int, Int, Int) -> Unit,
     onReminderChanged: (Boolean) -> Unit,
     onCheckUpdate: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     var newWords by remember(state.settings.dailyNewWords) { mutableIntStateOf(state.settings.dailyNewWords) }
     var reviewWords by remember(state.settings.dailyReviewWords) { mutableIntStateOf(state.settings.dailyReviewWords) }
+    var speakingSessions by remember(state.settings.dailySpeakingSessions) { mutableIntStateOf(state.settings.dailySpeakingSessions) }
     var minutes by remember(state.settings.dailyMinutes) { mutableIntStateOf(state.settings.dailyMinutes) }
 
     PageColumn {
@@ -393,10 +433,12 @@ private fun ProfileScreen(
             HorizontalDivider(color = Line)
             GoalRow("复习单词", reviewWords, 0, 200) { reviewWords = it }
             HorizontalDivider(color = Line)
+            GoalRow("口语练习", speakingSessions, 0, 20, "次") { speakingSessions = it }
+            HorizontalDivider(color = Line)
             GoalRow("学习时长", minutes, 5, 240, "分钟") { minutes = it }
             Spacer(Modifier.height(12.dp))
             Button(
-                onClick = { onSaveGoals(newWords, reviewWords, minutes) },
+                onClick = { onSaveGoals(newWords, reviewWords, speakingSessions, minutes) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
             ) { Text("保存计划") }
@@ -584,16 +626,67 @@ private fun EmptyPanel(
 }
 
 @Composable
-private fun PlanRow(title: String, progress: String, complete: Boolean) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun TodayPlanRow(
+    title: String,
+    subtitle: String,
+    progress: PlanTaskProgress,
+    unit: String,
+    onClick: () -> Unit,
+) {
+    val statusText = when (progress.status) {
+        PlanTaskStatus.NOT_STARTED -> "待开始"
+        PlanTaskStatus.IN_PROGRESS -> "进行中"
+        PlanTaskStatus.COMPLETED -> "已完成"
+        PlanTaskStatus.DISABLED -> "未设置"
+    }
+    val statusColor = when (progress.status) {
+        PlanTaskStatus.COMPLETED -> Green
+        PlanTaskStatus.IN_PROGRESS -> MaterialTheme.colorScheme.secondary
+        PlanTaskStatus.NOT_STARTED, PlanTaskStatus.DISABLED -> Muted
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
         Icon(
             Icons.Outlined.CheckCircleOutline,
             contentDescription = null,
-            tint = if (complete) Green else Faint,
+            tint = statusColor,
             modifier = Modifier.size(22.dp),
         )
-        Text(title, modifier = Modifier.padding(start = 10.dp).weight(1f), fontWeight = FontWeight.Medium)
-        Text(progress, style = MaterialTheme.typography.labelMedium, color = Muted)
+        Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                Text(statusText, style = MaterialTheme.typography.labelMedium, color = statusColor)
+            }
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.labelMedium,
+                color = Muted,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.weight(1f).height(4.dp).background(Line, RoundedCornerShape(2.dp)),
+                ) {
+                    if (progress.fraction > 0f) {
+                        Box(
+                            Modifier.fillMaxWidth(progress.fraction).height(4.dp)
+                                .background(statusColor, RoundedCornerShape(2.dp)),
+                        )
+                    }
+                }
+                Text(
+                    if (progress.target > 0) "${progress.current} / ${progress.target} $unit" else "未设目标",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Muted,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
+        }
     }
 }
 
